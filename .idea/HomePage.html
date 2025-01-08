@@ -82,8 +82,13 @@
     <p id="upload-status"></p>
 </div>
 
+<!-- QR-Code-Scanner -->
+<div id="reader" style="width:500px; margin: 20px auto;"></div>
+<p id="result">QR-Code-Ergebnis wird hier angezeigt...</p>
+
 <!-- Skripte -->
 <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+<script src="webapp.js"></script>
 <script>
     // Kamera-Feed starten
     const video = document.querySelector("video");
@@ -101,15 +106,16 @@
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             position => {
-                const { latitude, longitude } = position.coords;
-                console.log(`Standort: ${latitude}, ${longitude}`);
+                const { latitude, longitude, accuracy } = position.coords;
+                console.log(`Standort: ${latitude}, ${longitude}, Genauigkeit: ${accuracy}m`);
 
-                // Beispiel: Informationen basierend auf Standort anzeigen
-                if (latitude && longitude) {
-                    informationOverlay.textContent = `Standortdaten: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} - Outdoor erkannt!`;
-                } else {
-                    informationOverlay.textContent = "Indoor erkannt!";
+                let locationType = "Outdoor erkannt!";
+                if (accuracy > 50) {
+                    locationType = "Indoor erkannt!";
                 }
+
+                // Standortdaten und Entscheidung im Overlay anzeigen
+                informationOverlay.textContent = `Standortdaten: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} - ${locationType}`;
             },
             error => {
                 console.error("Standort konnte nicht bestimmt werden: ", error);
@@ -121,21 +127,8 @@
         informationOverlay.textContent = "Geolocation wird nicht unterstützt.";
     }
 
-    // QR-Code-Scanner starten
+    // QR-Code-Scanner für #qr-reader starten
     const qrResultElement = document.getElementById("qr-result");
-
-    function onScanSuccess(decodedText, decodedResult) {
-        // Was passiert, wenn ein QR-Code erkannt wird
-        console.log(`QR-Code erkannt: ${decodedText}`);
-        qrResultElement.textContent = `QR-Code-Ergebnis: ${decodedText}`;
-    }
-
-    function onScanFailure(error) {
-        // Fehler beim QR-Code-Scannen
-        console.warn(`QR-Scan-Fehler: ${error}`);
-    }
-
-    // QR-Code-Leser initialisieren
     const qrReader = new Html5Qrcode("qr-reader");
     qrReader.start(
         { facingMode: "environment" }, // Rückkamera
@@ -143,9 +136,24 @@
             fps: 10, // Bilder pro Sekunde
             qrbox: { width: 250, height: 250 } // Scanner-Größe
         },
-        onScanSuccess,
-        onScanFailure
+        (decodedText, decodedResult) => {
+            console.log(`QR-Code erkannt: ${decodedText}`);
+            qrResultElement.textContent = `QR-Code-Ergebnis: ${decodedText}`;
+        },
+        (error) => {
+            console.warn(`QR-Scan-Fehler: ${error}`);
+        }
     );
+
+    // QR-Code-Scanner für #reader (zusätzlicher Scanner)
+    function onScanSuccess(decodedText, decodedResult) {
+        document.getElementById('result').innerText = `Scanned result: ${decodedText}`;
+    }
+    function onScanError(errorMessage) {
+        console.warn(`QR Code Scan Error: ${errorMessage}`);
+    }
+    const additionalQrScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+    additionalQrScanner.render(onScanSuccess, onScanError);
 
     // Upload-Funktion
     function uploadFile() {
@@ -175,8 +183,5 @@
             });
     }
 </script>
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
-    <script src="webapp.js"></script>
-
 </body>
 </html>

@@ -1,10 +1,182 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>sadfasd</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile AR – Standortabhängige Informationen mit QR-Scan</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #333;
+            color: white;
+            overflow: hidden;
+        }
+
+        #video-container {
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            height: auto;
+        }
+
+        #information-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #qr-reader-container {
+            margin: 20px auto;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            width: 80%;
+        }
+
+        #qr-reader {
+            width: 100%;
+            height: auto;
+            border: 2px solid white;
+            border-radius: 10px;
+        }
+
+        #upload-container {
+            margin: 20px;
+            text-align: center;
+        }
+
+        input[type="file"] {
+            margin: 10px 0;
+        }
+    </style>
 </head>
 <body>
+<!-- Kamera-Feed -->
+<div id="video-container">
+    <video autoplay playsinline></video>
+    <!-- Overlay für Informationen -->
+    <div id="information-overlay">Standortbezogene Informationen erscheinen hier...</div>
+</div>
+
+<!-- QR-Code-Reader -->
+<div id="qr-reader-container">
+    <h2>QR-Code-Scanner</h2>
+    <div id="qr-reader"></div>
+    <p id="qr-result">QR-Code-Ergebnis: Noch nicht gescannt</p>
+</div>
+
+<!-- Datei-Upload -->
+<div id="upload-container">
+    <h2>User Generated Content hochladen</h2>
+    <input type="file" id="fileUpload" accept="image/*,video/*">
+    <button onclick="uploadFile()">Upload</button>
+    <p id="upload-status"></p>
+</div>
+
+<!-- Skripte -->
+<script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+<script>
+    // Kamera-Feed starten
+    const video = document.querySelector("video");
+    const informationOverlay = document.getElementById("information-overlay");
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            video.srcObject = stream;
+        })
+        .catch(error => {
+            console.error("Kamera konnte nicht geöffnet werden: ", error);
+        });
+
+    // Geolocation für Standort
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const { latitude, longitude } = position.coords;
+                console.log(`Standort: ${latitude}, ${longitude}`);
+
+                // Beispiel: Informationen basierend auf Standort anzeigen
+                if (latitude && longitude) {
+                    informationOverlay.textContent = `Standortdaten: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} - Outdoor erkannt!`;
+                } else {
+                    informationOverlay.textContent = "Indoor erkannt!";
+                }
+            },
+            error => {
+                console.error("Standort konnte nicht bestimmt werden: ", error);
+                informationOverlay.textContent = "Standortinformationen nicht verfügbar.";
+            }
+        );
+    } else {
+        console.error("Geolocation wird vom Browser nicht unterstützt.");
+        informationOverlay.textContent = "Geolocation wird nicht unterstützt.";
+    }
+
+    // QR-Code-Scanner starten
+    const qrResultElement = document.getElementById("qr-result");
+
+    function onScanSuccess(decodedText, decodedResult) {
+        // Was passiert, wenn ein QR-Code erkannt wird
+        console.log(`QR-Code erkannt: ${decodedText}`);
+        qrResultElement.textContent = `QR-Code-Ergebnis: ${decodedText}`;
+    }
+
+    function onScanFailure(error) {
+        // Fehler beim QR-Code-Scannen
+        console.warn(`QR-Scan-Fehler: ${error}`);
+    }
+
+    // QR-Code-Leser initialisieren
+    const qrReader = new Html5Qrcode("qr-reader");
+    qrReader.start(
+        { facingMode: "environment" }, // Rückkamera
+        {
+            fps: 10, // Bilder pro Sekunde
+            qrbox: { width: 250, height: 250 } // Scanner-Größe
+        },
+        onScanSuccess,
+        onScanFailure
+    );
+
+    // Upload-Funktion
+    function uploadFile() {
+        const file = document.getElementById("fileUpload").files[0];
+        const status = document.getElementById("upload-status");
+
+        if (!file) {
+            status.textContent = "Bitte eine Datei auswählen.";
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        fetch("https://example.com/upload", {
+            method: "POST",
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Upload erfolgreich:", data);
+                status.textContent = "Upload erfolgreich!";
+            })
+            .catch(error => {
+                console.error("Fehler beim Upload:", error);
+                status.textContent = "Upload fehlgeschlagen.";
+            });
+    }
+</script>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <script src="webapp.js"></script>
 
 </body>
 </html>

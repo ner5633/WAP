@@ -1,5 +1,7 @@
 const video = document.querySelector("video");
-navigator.mediaDevices.getUserMedia({video: true})
+
+// Kamera starten
+navigator.mediaDevices.getUserMedia({ video: true })
     .then(stream => {
         video.srcObject = stream;
     })
@@ -7,61 +9,62 @@ navigator.mediaDevices.getUserMedia({video: true})
         console.error("Kamera konnte nicht geöffnet werden: ", error);
     });
 
-
+// Standort abrufen
 if ("geolocation" in navigator) {
     navigator.geolocation.getCurrentPosition(
         position => {
-            const {latitude, longitude} = position.coords;
+            const { latitude, longitude } = position.coords;
             console.log(`Standort: ${latitude}, ${longitude}`);
-            // Prüfen: Outdoor oder Indoor basierend auf Position oder Signalstärke
+
+            // Informationen vom Server basierend auf Standort abrufen
+            fetch("http://10.0.40.166/getInfo", { // URL angepasst
+                method: "POST",
+                body: JSON.stringify({ latitude, longitude }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Daten vom Server:", data);
+
+                    // Informationen im Overlay anzeigen
+                    const informationOverlay = document.createElement("div");
+                    informationOverlay.textContent = `Server-Antwort: ${data.info}`;
+                    informationOverlay.style.position = "absolute";
+                    informationOverlay.style.top = "10px";
+                    informationOverlay.style.left = "10px";
+                    informationOverlay.style.color = "white";
+                    document.body.appendChild(informationOverlay);
+                })
+                .catch(error => {
+                    console.error("Fehler bei der Server-Kommunikation:", error);
+                });
         },
         error => {
             console.error("Standort konnte nicht bestimmt werden: ", error);
         }
     );
 } else {
-    console.error("Geolocation nicht unterstützt.");
+    console.error("Geolocation wird nicht unterstützt.");
 }
 
-
-const informationOverlay = document.createElement("div");
-informationOverlay.textContent = "Zusätzliche Informationen hier anzeigen";
-informationOverlay.style.position = "absolute";
-informationOverlay.style.top = "10px";
-informationOverlay.style.left = "10px";
-informationOverlay.style.color = "white";
-document.body.appendChild(informationOverlay);
-
-
-fetch("https://example.com/getInfo", {
-    method: "POST",
-    body: JSON.stringify({latitude, longitude}),
-    headers: {
-        "Content-Type": "application/json"
-    }
-})
-    .then(response => response.json())
-    .then(data => {
-        console.log("Daten vom Server:", data);
-    })
-    .catch(error => {
-        console.error("Fehler bei der Server-Kommunikation:", error);
-    });
-
-    function uploadFile() {
+// Datei-Upload-Funktion
+function uploadFile() {
     const file = document.getElementById("fileUpload").files[0];
     const formData = new FormData();
     formData.append("file", file);
 
-    fetch("https://example.com/upload", {
-    method: "POST",
-    body: formData
-})
-    .then(response => response.json())
-    .then(data => {
-    console.log("Upload erfolgreich:", data);
-})
-    .catch(error => {
-    console.error("Fehler beim Upload:", error);
-});
+    // Datei an den Server hochladen
+    fetch("http://10.0.40.166/upload", { // URL angepasst
+        method: "POST",
+        body: formData
+    })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Upload erfolgreich:", data);
+        })
+        .catch(error => {
+            console.error("Fehler beim Upload:", error);
+        });
 }
